@@ -1,0 +1,146 @@
+{
+    "billing_addresses": {
+        "description": "Emails sent to these addresses will be marked as low importance",
+        "addresses": [
+            "billing@componental.co",
+            "billing@rumkraft.dk"
+        ],
+        "score": -1
+    },
+    "financial_documents": {
+        "description": "Financial documents that need attention",
+        "terms": [
+            "invoice",
+            "payment due",
+            "amount due",
+            "payment reminder",
+            "unpaid invoice",
+            "outstanding payment",
+            "faktura",
+            "betalingsfrist",
+            "betalingspåmindelse",
+            "ubetalt faktura",
+            "restbeløb"
+        ],
+        "score": 5
+    },
+    "receipts": {
+        "description": "Financial documents that are just receipts/confirmations",
+        "terms": [
+            "receipt",
+            "payment confirmation",
+            "order confirmation",
+            "transaction confirmation",
+            "payment received",
+            "thank you for your payment",
+            "kvittering",
+            "betalingsbekræftelse",
+            "ordrebekræftelse",
+            "transaktionsbekræftelse",
+            "tak for din betaling"
+        ],
+        "score": -2
+    },
+    "important_keywords": {
+        "description": "Keywords that indicate high importance",
+        "terms": [
+            "urgent",
+            "important",
+            "asap",
+            "meeting",
+            "call",
+            "discussion",
+            "project",
+            "deadline",
+            "review",
+            "feedback",
+            "contract",
+            "agreement",
+            "proposal",
+            "partnership",
+            "collaboration",
+            "haster",
+            "vigtigt",
+            "møde",
+            "opkald",
+            "diskussion",
+            "projekt",
+            "deadline",
+            "gennemgang",
+            "tilbagemelding",
+            "kontrakt",
+            "aftale",
+            "forslag",
+            "partnerskab",
+            "tak for sidst",
+            "samarbejde"
+        ],
+        "score": 2
+    },
+    "contact_bonus": {
+        "description": "Bonuses for emails from contacts",
+        "from_contact": 3,
+        "full_name_match": 3,
+        "first_name_match": 2,
+        "last_name_match": 2,
+        "organization_match": 1
+    },
+    "reply_bonus": {
+        "description": "Bonus for being part of a conversation",
+        "is_reply": 2
+    },
+    "newsletter_terms": {
+        "description": "Terms that indicate newsletter or marketing content",
+        "terms": [
+            "newsletter",
+            "subscribe",
+            "unsubscribe",
+            "marketing",
+            "promotion",
+            "special offer",
+            "nyhedsbrev",
+            "tilmeld",
+            "afmeld",
+            "markedsføring",
+            "kampagne",
+            "tilbud"
+        ],
+        "score": -3
+    },
+    "personal_indicators": {
+        "description": "Terms that indicate personal or direct communication",
+        "terms": [
+            "hi",
+            "hello",
+            "dear",
+            "regards",
+            "best",
+            "thanks",
+            "thank you",
+            "hej",
+            "kære",
+            "med venlig hilsen",
+            "bedste hilsner",
+            "tak",
+            "mange tak"
+        ],
+        "score": 1
+    },
+    "time_sensitive": {
+        "description": "Terms that indicate time sensitivity",
+        "terms": [
+            "today",
+            "tomorrow",
+            "this week",
+            "next week",
+            "deadline",
+            "asap",
+            "i dag",
+            "i morgen",
+            "denne uge",
+            "næste uge",
+            "frist"
+        ],
+        "score": 2
+    }
+} 

@@ -1,0 +1,4 @@
+python-dotenv==1.0.0
+email-validator==2.1.0.post1
+vobject==0.9.6.1
+html2text==2024.2.26 

@@ -1,0 +1,335 @@
+# Newsletter indicators
+newsletter
+subscription
+unsubscribe
+opt-out
+opt out
+sign up
+signup
+subscribe
+weekly digest
+monthly digest
+daily digest
+
+# Marketing and promotional
+promotion
+special offer
+limited time
+discount
+sale
+deal
+offer
+marketing
+advertisement
+sponsored
+marketing@
+noreply@
+no-reply@
+no_reply@
+automated@
+renewals@
+updates@
+notifications@
+alerts@
+news@
+info@
+support@
+help@
+contact@
+sales@
+billing@
+payment@
+order@
+shipping@
+delivery@
+tracking@
+status@
+system@
+service@
+services@
+account@
+accounts@
+team@
+teams@
+admin@
+administrator@
+webmaster@
+hostmaster@
+postmaster@
+abuse@
+security@
+privacy@
+legal@
+compliance@
+feedback@
+survey@
+poll@
+vote@
+contest@
+sweepstakes
+giveaway
+free trial
+trial period
+limited time offer
+exclusive offer
+special price
+discount code
+promo code
+coupon code
+referral
+refer a friend
+invite
+invitation
+welcome
+get started
+onboarding
+setup
+configuration
+activation
+verification
+confirmation
+registration
+signup
+sign up
+create account
+new account
+password reset
+forgot password
+recover account
+security alert
+suspicious activity
+login attempt
+new device
+new location
+new browser
+new ip
+unusual activity
+security check
+verify your account
+confirm your email
+verify your email
+confirm your identity
+verify your identity
+security verification
+account verification
+email verification
+phone verification
+two-factor
+2fa
+mfa
+multi-factor
+security code
+verification code
+confirmation code
+activation code
+reset code
+recovery code
+backup code
+emergency code
+security key
+recovery key
+backup key
+emergency key
+security token
+recovery token
+backup token
+emergency token
+security device
+recovery device
+backup device
+emergency device
+security app
+recovery app
+backup app
+emergency app
+security software
+recovery software
+backup software
+emergency software
+security tool
+recovery tool
+backup tool
+emergency tool
+security service
+recovery service
+backup service
+emergency service
+security system
+recovery system
+backup system
+emergency system
+security process
+recovery process
+backup process
+emergency process
+security procedure
+recovery procedure
+backup procedure
+emergency procedure
+security protocol
+recovery protocol
+backup protocol
+emergency protocol
+security measure
+recovery measure
+backup measure
+emergency measure
+security step
+recovery step
+backup step
+emergency step
+security action
+recovery action
+backup action
+emergency action
+security task
+recovery task
+backup task
+emergency task
+security job
+recovery job
+backup job
+emergency job
+security work
+recovery work
+backup work
+emergency work
+security operation
+recovery operation
+backup operation
+emergency operation
+security function
+recovery function
+backup function
+emergency function
+security feature
+recovery feature
+backup feature
+emergency feature
+security capability
+recovery capability
+backup capability
+emergency capability
+security ability
+recovery ability
+backup ability
+emergency ability
+security power
+recovery power
+backup power
+emergency power
+security force
+recovery force
+backup force
+emergency force
+security strength
+recovery strength
+backup strength
+emergency strength
+security might
+recovery might
+backup might
+emergency might
+security potency
+recovery potency
+backup potency
+emergency potency
+security vigor
+recovery vigor
+backup vigor
+emergency vigor
+security energy
+recovery energy
+backup energy
+emergency energy
+security vitality
+recovery vitality
+backup vitality
+emergency vitality
+security dynamism
+recovery dynamism
+backup dynamism
+emergency dynamism
+security drive
+recovery drive
+backup drive
+emergency drive
+security motivation
+recovery motivation
+backup motivation
+emergency motivation
+security incentive
+recovery incentive
+backup incentive
+emergency incentive
+security stimulus
+recovery stimulus
+backup stimulus
+emergency stimulus
+security spur
+recovery spur
+backup spur
+emergency spur
+security goad
+recovery goad
+backup goad
+emergency goad
+security prod
+recovery prod
+backup prod
+emergency prod
+security push
+recovery push
+backup push
+emergency push
+security shove
+recovery shove
+backup shove
+emergency shove
+security thrust
+recovery thrust
+backup thrust
+emergency thrust
+security impulse
+recovery impulse
+backup impulse
+emergency impulse
+security momentum
+recovery momentum
+backup momentum
+emergency momentum
+security impetus
+recovery impetus
+backup impetus
+emergency impetus
+
+# Common newsletter senders
+mailchimp
+constant contact
+sendgrid
+hubspot
+salesforce
+marketo
+pardot
+mailerlite
+convertkit
+substack
+
+# Common automated services
+aws
+amazon
+google cloud
+microsoft
+azure
+digitalocean
+heroku
+github
+gitlab
+bitbucket
+jira
+trello
+asana
+slack
+zoom
+teams
+meet 
