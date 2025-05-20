@@ -704,110 +704,138 @@ class EmailProcessor:
             print(f"Error counting emails: {str(e)}")
             return 0
 
-def main():
-    parser = argparse.ArgumentParser(description='Process emails from IMAP server')
-    parser.add_argument('--limit', type=int, help='Number of emails to process (default: all)')
-    parser.add_argument('--since', type=str, help='Process emails since date (YYYY-MM-DD)')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
-    parser.add_argument('--no-contacts', action='store_true', help='Skip loading contacts')
-    parser.add_argument('--no-scoring', action='store_true', help='Skip scoring emails')
-    parser.add_argument('--input-file', type=str, help='Input JSON file with pre-fetched emails')
-    parser.add_argument('--output-file', type=str, default='emails.json', help='Output JSON file')
-    parser.add_argument('--count-only', action='store_true', help='Only count emails without fetching them')
-    parser.add_argument('--folder', type=str, help='Specific folder to process (default: all folders)')
-    parser.add_argument('--list-folders', action='store_true', help='List available folders and exit')
-    args = parser.parse_args()
-
-    try:
-        processor = EmailProcessor(verbose=args.verbose, load_contacts=not args.no_contacts)
+    def generate_unified_stats(self):
+        """Generate statistics across all JSON files in the output directory"""
+        all_emails = []
+        total_emails = 0
+        total_from_contacts = 0
+        total_replies = 0
+        total_attachments = 0
+        importance_scores = []
+        sender_counts = {}
+        date_ranges = {
+            'oldest': None,
+            'newest': None
+        }
         
-        # Get list of available folders
-        available_folders = processor.list_folders()
-        if not available_folders:
-            print("No folders available. Check your IMAP connection and permissions.")
-            return
-            
-        if args.list_folders:
-            print("\nFolders that will be processed:")
-            for folder in available_folders:
-                print(f"- {folder}")
-            return
-            
-        if args.count_only:
-            count = processor.count_emails(since_date=args.since)
-            print(f"\nFound {count} emails" + (f" since {args.since}" if args.since else ""))
-            return
-
-        # If folder is specified via command line, use it
-        if args.folder:
-            folders = [args.folder]
-        else:
-            # Sort folders alphabetically, but keep INBOX second to last
-            sorted_folders = []
-            inbox_folder = None
-            
-            # First, collect all folders except INBOX
-            for folder in available_folders:
-                if folder == 'INBOX':
-                    inbox_folder = folder
-                else:
-                    sorted_folders.append(folder)
-            
-            # Sort the non-INBOX folders alphabetically
-            sorted_folders.sort()
-            
-            # Add INBOX second to last
-            if inbox_folder:
-                sorted_folders.append(inbox_folder)
-            
-            # Show folder selection menu
-            print("\nAvailable folders:")
-            for i, folder in enumerate(sorted_folders, 1):
-                print(f"{i}. {folder}")
-            print(f"{len(sorted_folders) + 1}. Process all folders")
-            
-            while True:
-                try:
-                    choice = input("\nSelect folder number (or 'q' to quit): ")
-                    if choice.lower() == 'q':
-                        return
-                    
-                    choice = int(choice)
-                    if choice == len(sorted_folders) + 1:
-                        folders = sorted_folders
-                        break
-                    elif 1 <= choice <= len(sorted_folders):
-                        folders = [sorted_folders[choice - 1]]
-                        break
-                    else:
-                        print("Invalid selection. Please try again.")
-                except ValueError:
-                    print("Please enter a valid number.")
+        # Get all JSON files in the output directory
+        json_files = [f for f in os.listdir(self.output_dir) if f.endswith('_emails.json')]
         
-        for folder in folders:
-            print(f"\nProcessing folder: {folder}")
-            if args.input_file:
-                # Load pre-fetched emails from file
-                with open(args.input_file, 'r', encoding='utf-8') as f:
+        if not json_files:
+            print("No email JSON files found in the output directory.")
+            return
+        
+        print(f"\nProcessing {len(json_files)} JSON files...")
+        
+        for json_file in json_files:
+            try:
+                with open(os.path.join(self.output_dir, json_file), 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     emails = data.get('emails', [])
-            else:
-                # Fetch new emails
-                emails = processor.fetch_emails(folder=folder, limit=args.limit, since_date=args.since)
-            
-            if emails:
-                # Score the emails only if not disabled
-                if not args.no_scoring:
-                    emails = processor.score_emails(emails)
-                # Save to folder-specific file
-                output_file = f"{folder.lower()}_raw_emails.json"
-                processor.save_to_json(emails, output_file)
-            else:
-                print(f"No emails were processed from {folder}. Check your IMAP settings and connection.")
-    except KeyboardInterrupt:
-        print("\nProgram interrupted by user. Exiting...")
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
+                    total_emails += len(emails)
+                    
+                    # Process each email
+                    for email in emails:
+                        # Count contacts and replies
+                        if email.get('is_from_contact'):
+                            total_from_contacts += 1
+                        if email.get('is_reply'):
+                            total_replies += 1
+                        
+                        # Count attachments
+                        total_attachments += len(email.get('attachments', []))
+                        
+                        # Track importance scores
+                        if 'importance_score' in email:
+                            importance_scores.append(email['importance_score'])
+                        
+                        # Track senders
+                        sender = email.get('from', '').split('<')[0].strip()
+                        if sender:
+                            sender_counts[sender] = sender_counts.get(sender, 0) + 1
+                        
+                        # Track date ranges
+                        email_date = email.get('date')
+                        if email_date:
+                            try:
+                                email_date = datetime.fromisoformat(email_date.replace('Z', '+00:00'))
+                                if date_ranges['oldest'] is None or email_date < date_ranges['oldest']:
+                                    date_ranges['oldest'] = email_date
+                                if date_ranges['newest'] is None or email_date > date_ranges['newest']:
+                                    date_ranges['newest'] = email_date
+                            except (ValueError, TypeError):
+                                continue
+                
+                print(f"Processed {json_file}: {len(emails)} emails")
+            except Exception as e:
+                print(f"Error processing {json_file}: {str(e)}")
+        
+        # Calculate statistics
+        avg_importance = sum(importance_scores) / len(importance_scores) if importance_scores else 0
+        top_senders = sorted(sender_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        # Print unified statistics
+        print("\n=== Unified Email Statistics ===")
+        print(f"Total Emails: {total_emails}")
+        print(f"Emails from Contacts: {total_from_contacts} ({total_from_contacts/total_emails*100:.1f}%)")
+        print(f"Reply Emails: {total_replies} ({total_replies/total_emails*100:.1f}%)")
+        print(f"Total Attachments: {total_attachments}")
+        print(f"Average Importance Score: {avg_importance:.2f}")
+        
+        if date_ranges['oldest'] and date_ranges['newest']:
+            print(f"\nDate Range:")
+            print(f"Oldest: {date_ranges['oldest'].isoformat()}")
+            print(f"Newest: {date_ranges['newest'].isoformat()}")
+        
+        print("\nTop 10 Senders:")
+        for sender, count in top_senders:
+            print(f"- {sender}: {count} emails")
+        
+        # Save unified statistics to a JSON file
+        stats = {
+            'total_emails': total_emails,
+            'emails_from_contacts': total_from_contacts,
+            'reply_emails': total_replies,
+            'total_attachments': total_attachments,
+            'average_importance_score': avg_importance,
+            'date_range': {
+                'oldest': date_ranges['oldest'].isoformat() if date_ranges['oldest'] else None,
+                'newest': date_ranges['newest'].isoformat() if date_ranges['newest'] else None
+            },
+            'top_senders': {sender: count for sender, count in top_senders},
+            'processed_files': json_files,
+            'generated_at': self._get_current_time()
+        }
+        
+        stats_file = os.path.join(self.output_dir, 'unified_stats.json')
+        with open(stats_file, 'w', encoding='utf-8') as f:
+            json.dump(stats, f, indent=2)
+        
+        print(f"\nUnified statistics saved to {stats_file}")
+
+def main():
+    parser = argparse.ArgumentParser(description='Process emails from IMAP server')
+    parser.add_argument('--limit', type=int, help='Limit the number of emails to process')
+    parser.add_argument('--since', type=str, help='Process emails since date (YYYY-MM-DD)')
+    parser.add_argument('--folder', type=str, help='Process specific folder')
+    parser.add_argument('--list-folders', action='store_true', help='List available folders')
+    parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
+    parser.add_argument('--no-contacts', action='store_true', help='Skip loading contacts')
+    parser.add_argument('--no-scoring', action='store_true', help='Skip scoring emails')
+    parser.add_argument('--unified-stats', action='store_true', help='Generate unified statistics across all JSON files')
+    args = parser.parse_args()
+    
+    processor = EmailProcessor(verbose=args.verbose, load_contacts=not args.no_contacts)
+    
+    if args.unified_stats:
+        processor.generate_unified_stats()
+        return
+    
+    if args.list_folders:
+        processor.list_folders()
+        return
+    
+    # ... rest of the main function ...
 
 if __name__ == "__main__":
     main() 
