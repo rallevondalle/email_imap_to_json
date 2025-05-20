@@ -5,20 +5,110 @@ from datetime import datetime, timedelta
 import re
 from email_processor import EmailProcessor
 from urllib.parse import urlparse
+import csv
 
-def analyze_emails(json_file):
-    print(f"\nAnalyzing {json_file}...")
-    
-    # Initialize processor with verbose mode to load contacts
-    processor = EmailProcessor(verbose=True)
-    
-    # Load the JSON file
-    with open(json_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-        emails = data.get('emails', [])
+def export_to_csv(stats, filename):
+    """Export statistics to a CSV file"""
+    with open(filename, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        
+        # Write overall statistics
+        writer.writerow(['Category', 'Value'])
+        writer.writerow(['Total Emails', stats['total_emails']])
+        writer.writerow(['Average Importance Score', f"{stats['avg_importance']:.2f}"])
+        writer.writerow(['Total Attachments', stats['total_attachments']])
+        writer.writerow(['Total Threads', stats['total_threads']])
+        writer.writerow([''])
+
+        # Write sender statistics
+        writer.writerow(['Top Senders', 'Count'])
+        for sender, count in stats['top_senders']:
+            writer.writerow([sender, count])
+        writer.writerow([''])
+
+        # Write domain statistics
+        writer.writerow(['Top Domains', 'Count'])
+        for domain, count in stats['top_domains']:
+            writer.writerow([domain, count])
+        writer.writerow([''])
+
+        # Write importance distribution
+        writer.writerow(['Importance Score', 'Count', 'Percentage'])
+        for score, count in stats['importance_distribution']:
+            percentage = (count / stats['total_emails']) * 100
+            writer.writerow([score, count, f"{percentage:.1f}%"])
+        writer.writerow([''])
+
+        # Write time distribution
+        writer.writerow(['Hour', 'Count', 'Percentage'])
+        for hour, count in stats['time_distribution']:
+            percentage = (count / stats['total_emails']) * 100
+            writer.writerow([f"{hour:02d}:00", count, f"{percentage:.1f}%"])
+        writer.writerow([''])
+
+        # Write attachment statistics
+        writer.writerow(['Attachments per Email', 'Count', 'Percentage'])
+        for count, emails_count in stats['attachment_stats']:
+            percentage = (emails_count / stats['total_emails']) * 100
+            writer.writerow([count, emails_count, f"{percentage:.1f}%"])
+        writer.writerow([''])
+
+        # Write reply statistics
+        writer.writerow(['Reply Type', 'Count', 'Percentage'])
+        for type_, count in stats['reply_stats'].items():
+            percentage = (count / stats['total_emails']) * 100
+            writer.writerow([type_, count, f"{percentage:.1f}%"])
+        writer.writerow([''])
+
+        # Write thread statistics
+        writer.writerow(['Thread Size', 'Count', 'Percentage'])
+        for size, count in stats['thread_sizes']:
+            percentage = (count / stats['total_threads']) * 100
+            writer.writerow([size, count, f"{percentage:.1f}%"])
+        writer.writerow([''])
+
+        # Write contact statistics
+        writer.writerow(['Contact Type', 'Count', 'Percentage'])
+        for type_, count in stats['contact_stats'].items():
+            percentage = (count / stats['total_emails']) * 100
+            writer.writerow([type_, count, f"{percentage:.1f}%"])
+
+def analyze_emails(json_file=None, combined=False):
+    """Analyze emails from a single file or combine statistics from all files"""
+    if combined:
+        print("\nAnalyzing all JSON files combined...")
+        # Get all JSON files in the output directory
+        output_dir = os.path.join(os.path.dirname(__file__), 'output')
+        json_files = [f for f in os.listdir(output_dir) if f.endswith('_emails.json')]
+        
+        if not json_files:
+            print("No email JSON files found in the output directory.")
+            return
+        
+        # Initialize counters for combined analysis
+        all_emails = []
+        for json_file in json_files:
+            try:
+                with open(os.path.join(output_dir, json_file), 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    all_emails.extend(data.get('emails', []))
+                print(f"Loaded {json_file}: {len(data.get('emails', []))} emails")
+            except Exception as e:
+                print(f"Error loading {json_file}: {str(e)}")
+        
+        emails = all_emails
+    else:
+        print(f"\nAnalyzing {json_file}...")
+        # Initialize processor with verbose mode to load contacts
+        processor = EmailProcessor(verbose=True)
+        
+        # Load the JSON file
+        with open(json_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            emails = data.get('emails', [])
     
     if not emails:
-        print("No emails found in the file.")
+        print("No emails found to analyze.")
         return
     
     # Initialize counters
@@ -47,6 +137,7 @@ def analyze_emails(json_file):
     ]
     
     # Load blacklist terms
+    processor = EmailProcessor(verbose=True)
     blacklist = processor.blacklist
     
     # First pass: organize emails into threads
@@ -292,33 +383,77 @@ def analyze_emails(json_file):
     print(f"- Medium Importance (0 <= score < 5): {medium_importance} emails ({(medium_importance/len(emails))*100:.1f}%)")
     print(f"- Low Importance (score < 0): {low_importance} emails ({(low_importance/len(emails))*100:.1f}%)")
 
+    # If this is a combined analysis, export to CSV
+    if combined:
+        # Prepare statistics for CSV export
+        stats = {
+            'total_emails': len(emails),
+            'avg_importance': avg_importance,
+            'total_attachments': sum(count * num for count, num in attachment_stats.items()),
+            'total_threads': total_threads,
+            'top_senders': sender_counter.most_common(10),
+            'top_domains': domain_counter.most_common(10),
+            'importance_distribution': sorted(importance_distribution.items()),
+            'time_distribution': sorted(time_distribution.items()),
+            'attachment_stats': sorted(attachment_stats.items()),
+            'reply_stats': reply_stats,
+            'thread_sizes': sorted(size_distribution.items()),
+            'contact_stats': contact_stats
+        }
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        csv_filename = os.path.join(output_dir, f'email_statistics_{timestamp}.csv')
+        
+        # Export to CSV
+        export_to_csv(stats, csv_filename)
+        print(f"\nStatistics exported to: {csv_filename}")
+
 def main():
     # Get all JSON files in the output directory
     output_dir = os.path.join(os.path.dirname(__file__), 'output')
-    json_files = [f for f in os.listdir(output_dir) if f.endswith('_raw_emails.json')]
+    json_files = [f for f in os.listdir(output_dir) if f.endswith('_emails.json')]
     
     if not json_files:
-        print("No JSON files found in the output directory.")
+        print("No email JSON files found in the output directory.")
         return
     
-    print("Available files:")
+    # Sort files by name
+    json_files.sort()
+    
+    # Calculate the width needed for the numbers
+    num_width = len(str(len(json_files)))
+    
+    print("\n=== Email Analysis Files ===")
+    print("Select a file to analyze:\n")
+    
+    # Print files in two columns
     for i, file in enumerate(json_files, 1):
-        print(f"{i}. {file}")
+        # Format the number with consistent width
+        num_str = f"{i:>{num_width}}"
+        # Remove _raw_emails.json for cleaner display
+        display_name = file.replace('_raw_emails.json', '')
+        print(f"{num_str}. {display_name}")
     
-    # Ask user which file to analyze
-    while True:
-        try:
-            choice = int(input("\nEnter the number of the file to analyze (or 0 to exit): "))
-            if choice == 0:
-                return
-            if 1 <= choice <= len(json_files):
-                break
-            print("Invalid choice. Please try again.")
-        except ValueError:
-            print("Please enter a number.")
+    print(f"\n{len(json_files) + 1}. Analyze all files combined")
+    print("q. Quit")
     
-    selected_file = os.path.join(output_dir, json_files[choice - 1])
-    analyze_emails(selected_file)
+    choice = input("\nEnter your choice: ").strip().lower()
+    
+    if choice == 'q':
+        return
+    
+    try:
+        choice = int(choice)
+        if choice == len(json_files) + 1:
+            analyze_emails(combined=True)
+        elif 1 <= choice <= len(json_files):
+            json_file = os.path.join(output_dir, json_files[choice - 1])
+            analyze_emails(json_file)
+        else:
+            print("Invalid selection.")
+    except ValueError:
+        print("Please enter a valid number.")
 
 if __name__ == "__main__":
     main() 
