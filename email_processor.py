@@ -461,7 +461,7 @@ class EmailProcessor:
             self._log(f"Selecting folder: {folder}")
             mail.select(folder, readonly=True)
 
-            # Search for all emails
+            # Search for all emails, sorted by date in descending order
             self._log("Searching for all emails...")
             status, messages = mail.search(None, 'ALL')
             self._log(f"IMAP Search Status: {status}")
@@ -478,6 +478,7 @@ class EmailProcessor:
             emails = []
             # If no limit is set, process all emails
             if limit:
+                # Get the most recent emails (they are already sorted by date in descending order)
                 email_ids = email_ids[-limit:]  # Get the most recent emails
                 self._log(f"Processing {limit} most recent emails")
             
@@ -495,7 +496,6 @@ class EmailProcessor:
                     
                     if email_data:
                         emails.append(email_data)
-                        self._log(f"Processed email {i}/{len(email_ids)}: {email_data['subject']}")
                     
                 except Exception as e:
                     self._log(f"Error processing email {i}: {str(e)}")
@@ -503,6 +503,27 @@ class EmailProcessor:
             
             mail.close()
             mail.logout()
+
+            # Reverse the emails list so the most recent is first
+            emails = emails[::-1]
+
+            # Print verbose output in the new order with human-readable date/time
+            if self.verbose:
+                for idx, email_data in enumerate(emails, 1):
+                    # Format date
+                    date_str = email_data.get('date', '')
+                    try:
+                        if date_str:
+                            dt = parsedate_to_datetime(date_str)
+                            # Convert to local time
+                            dt_local = dt.astimezone() if dt.tzinfo else dt
+                            date_fmt = dt_local.strftime('%Y-%m-%d %H:%M')
+                        else:
+                            date_fmt = 'Unknown date'
+                    except Exception:
+                        date_fmt = date_str or 'Unknown date'
+                    print(f"Processed email {idx}/{len(emails)}: {email_data['subject']} ({date_fmt})")
+
             return emails
             
         except Exception as e:
@@ -546,14 +567,19 @@ class EmailProcessor:
 
     def _merge_emails(self, existing_emails, new_emails):
         """Merge new emails with existing ones, avoiding duplicates"""
-        # Create a set of existing message IDs
-        existing_ids = {email.get('message_id') for email in existing_emails}
+        # Create a set of existing message IDs, stripping angle brackets and handling None
+        existing_ids = {str(email.get('message_id') or '').strip('<>') for email in existing_emails}
         
         # Add only new emails
+        new_count = 0
         for email in new_emails:
-            if email.get('message_id') not in existing_ids:
+            msg_id = str(email.get('message_id') or '').strip('<>')
+            if msg_id and msg_id not in existing_ids:
                 existing_emails.append(email)
-                existing_ids.add(email.get('message_id'))
+                existing_ids.add(msg_id)
+                new_count += 1
+                if self.verbose:
+                    print(f"Added new email: {email.get('subject')}")
         
         # Sort by date
         def get_date(email):
@@ -574,7 +600,7 @@ class EmailProcessor:
             except Exception:
                 return datetime.min
         
-        return sorted(existing_emails, key=get_date, reverse=True)
+        return sorted(existing_emails, key=get_date, reverse=True), new_count
 
     def save_to_json(self, emails, output_file='emails.json'):
         """Save processed emails to JSON file, handling incremental updates"""
@@ -590,12 +616,17 @@ class EmailProcessor:
                         data = json.load(f)
                         existing_emails = data.get('emails', [])
                         self._log(f"Loaded {len(existing_emails)} existing emails from {output_file}")
+                except json.JSONDecodeError as e:
+                    self._log(f"Error loading existing file (JSON decode error): {str(e)}")
+                    # If the file is corrupted, rename it and start fresh
+                    backup_file = f"{output_file}.bak"
+                    os.rename(output_file, backup_file)
+                    self._log(f"Renamed corrupted file to {backup_file}")
                 except Exception as e:
                     self._log(f"Error loading existing file: {str(e)}")
             
             # Merge new emails with existing ones
-            merged_emails = self._merge_emails(existing_emails, emails)
-            new_count = len(merged_emails) - len(existing_emails)
+            merged_emails, new_count = self._merge_emails(existing_emails, emails)
             
             # Generate summary
             summary = self.generate_summary(merged_emails)
@@ -643,7 +674,7 @@ class EmailProcessor:
                 'last_updated': datetime.now().isoformat()
             }
             
-            # Write to file
+            # Write to file with proper encoding and formatting
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(output_data, f, ensure_ascii=False, indent=2)
             
