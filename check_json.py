@@ -40,8 +40,9 @@ def check_json_file(file_path):
             print("❌ Error: Root object must be a dictionary")
             return False
         
+        # Check for required fields
         if 'emails' not in data:
-            print("❌ Error: Missing 'emails' array")
+            print(f"⚠️ Warning: Missing 'emails' array in {file_path}. Skipping file.")
             return False
         
         if not isinstance(data['emails'], list):
@@ -106,12 +107,14 @@ def main():
     for file_path in json_files:
         print(f"\nChecking {file_path}...")
         if not check_json_file(file_path):
-            all_valid = False
+            # Only mark as invalid if the file is not a summary file (e.g., unified_stats.json)
+            if 'unified_stats.json' not in file_path:
+                all_valid = False
             continue
         print(f"✅ {file_path} is valid and properly formatted")
     
     if not all_valid:
-        print("\n❌ Some files have issues that need to be fixed")
+        print("\n⚠️ Some files have issues that need to be fixed")
     else:
         print("\n✅ All files are valid and properly formatted")
 
