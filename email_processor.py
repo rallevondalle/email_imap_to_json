@@ -422,17 +422,21 @@ class EmailProcessor:
             folder_list = []
             self._log("\nAvailable folders:")
             for folder in folders:
-                # Decode folder name from bytes
+                # Decode folder name from bytes and normalize case
                 folder_name = folder.decode('utf-8').split('"')[-1]
                 
                 # Skip empty folder names
                 if not folder_name:
                     continue
                 
+                # Normalize INBOX to lowercase for consistency
+                if folder_name.upper() == 'INBOX':
+                    folder_name = 'inbox'
+                
                 # Include INBOX, Archive folders, and custom folders
                 # Exclude only system folders like Spam, Trash, etc.
-                if (folder_name == 'INBOX' or 
-                    folder_name.startswith('Archive') or 
+                if (folder_name.lower() == 'inbox' or 
+                    folder_name.lower().startswith('archive') or 
                     not any(x in folder_name.upper() for x in ['SPAM', 'TRASH', 'JUNK', 'DELETED', 'SENT', 'DRAFTS'])):
                     folder_list.append(folder_name)
                     self._log(f"Including folder: {folder_name}")
@@ -643,26 +647,29 @@ class EmailProcessor:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(output_data, f, ensure_ascii=False, indent=2)
             
-            print(f"\nEmail Processing Summary:")
-            print(f"Total Emails in Database: {len(merged_emails)}")
-            print(f"New Emails Added: {new_count}")
-            print(f"From Contacts: {summary['from_contacts']}")
-            print(f"Replies: {summary['replies']}")
-            print(f"Emails with Attachments: {summary['with_attachments']}")
-            print(f"Total Attachments: {summary['total_attachments']}")
-            print(f"\nImportance Distribution:")
-            print(f"High Importance: {summary['importance_scores']['high']}")
-            print(f"Medium Importance: {summary['importance_scores']['medium']}")
-            print(f"Low Importance: {summary['importance_scores']['low']}")
-            print(f"\nDate Range:")
-            print(f"Oldest: {date_range['oldest']}")
-            print(f"Newest: {date_range['newest']}")
-            print("\nTop Senders:")
-            for sender, count in sorted(summary['senders'].items(), key=lambda x: x[1], reverse=True)[:5]:
-                print(f"- {sender}: {count} emails")
-            print("\nRecent Subjects:")
-            for subject in summary['subjects']:
-                print(f"- {subject}")
+            # Print summary with focus on new emails
+            if new_count > 0:
+                print(f"\nNew Emails Added to {os.path.basename(output_file)}: {new_count}")
+                print(f"Total Emails in Database: {len(merged_emails)}")
+                print(f"From Contacts: {summary['from_contacts']}")
+                print(f"Replies: {summary['replies']}")
+                print(f"Emails with Attachments: {summary['with_attachments']}")
+                print(f"Total Attachments: {summary['total_attachments']}")
+                print(f"\nImportance Distribution:")
+                print(f"High Importance: {summary['importance_scores']['high']}")
+                print(f"Medium Importance: {summary['importance_scores']['medium']}")
+                print(f"Low Importance: {summary['importance_scores']['low']}")
+                print(f"\nDate Range:")
+                print(f"Oldest: {date_range['oldest']}")
+                print(f"Newest: {date_range['newest']}")
+                print("\nTop Senders:")
+                for sender, count in sorted(summary['senders'].items(), key=lambda x: x[1], reverse=True)[:5]:
+                    print(f"- {sender}: {count} emails")
+                print("\nRecent Subjects:")
+                for subject in summary['subjects']:
+                    print(f"- {subject}")
+            else:
+                print(f"\nNo new emails added to {os.path.basename(output_file)}")
             
         except Exception as e:
             print(f"Error saving to JSON: {str(e)}")
@@ -819,7 +826,7 @@ def main():
     parser.add_argument('--since', type=str, help='Process emails since date (YYYY-MM-DD)')
     parser.add_argument('--folder', type=str, help='Process specific folder')
     parser.add_argument('--list-folders', action='store_true', help='List available folders')
-    parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
     parser.add_argument('--no-contacts', action='store_true', help='Skip loading contacts')
     parser.add_argument('--no-scoring', action='store_true', help='Skip scoring emails')
     parser.add_argument('--unified-stats', action='store_true', help='Generate unified statistics across all JSON files')
@@ -835,7 +842,72 @@ def main():
         processor.list_folders()
         return
     
-    # ... rest of the main function ...
+    # Get list of available folders
+    available_folders = processor.list_folders()
+    if not available_folders:
+        print("No folders available. Check your IMAP connection and permissions.")
+        return
+    
+    # If folder is specified via command line, use it
+    if args.folder:
+        folders = [args.folder]
+    else:
+        # Sort folders alphabetically, but keep INBOX second to last
+        sorted_folders = []
+        inbox_folder = None
+        
+        # First, collect all folders except INBOX
+        for folder in available_folders:
+            if folder == 'INBOX':
+                inbox_folder = folder
+            else:
+                sorted_folders.append(folder)
+        
+        # Sort the non-INBOX folders alphabetically
+        sorted_folders.sort()
+        
+        # Add INBOX second to last
+        if inbox_folder:
+            sorted_folders.append(inbox_folder)
+        
+        # Show folder selection menu
+        print("\nAvailable folders:")
+        for i, folder in enumerate(sorted_folders, 1):
+            print(f"{i}. {folder}")
+        print(f"{len(sorted_folders) + 1}. Process all folders")
+        
+        while True:
+            try:
+                choice = input("\nSelect folder number (or 'q' to quit): ")
+                if choice.lower() == 'q':
+                    return
+                
+                choice = int(choice)
+                if choice == len(sorted_folders) + 1:
+                    folders = sorted_folders
+                    break
+                elif 1 <= choice <= len(sorted_folders):
+                    folders = [sorted_folders[choice - 1]]
+                    break
+                else:
+                    print("Invalid selection. Please try again.")
+            except ValueError:
+                print("Please enter a valid number.")
+    
+    for folder in folders:
+        print(f"\nProcessing folder: {folder}")
+        # Fetch new emails
+        emails = processor.fetch_emails(folder=folder, limit=args.limit, since_date=args.since)
+        
+        if emails:
+            # Score the emails only if not disabled
+            if not args.no_scoring:
+                emails = processor.score_emails(emails)
+            # Save to folder-specific file, ensuring consistent case and no extra spaces
+            output_file = f"{folder.lower().strip()}_raw_emails.json"
+            processor.save_to_json(emails, output_file)
+        else:
+            print(f"No emails were processed from {folder}. Check your IMAP settings and connection.")
 
 if __name__ == "__main__":
     main() 
